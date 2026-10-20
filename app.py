@@ -1,6 +1,95 @@
 
 import streamlit as st
 from google import genai
+
+
+st.set_page_config(
+    page_title="Kairo AI — Find Your Way Forward",
+    page_icon="🌿",
+    layout="wide",
+    initial_sidebar_state="expanded",
+)
+st.markdown("""
+<style>
+/* Overall page */
+.stApp {
+    background: #F7F6F0;
+    color: #29382E;
+}
+/* Main content spacing */
+.block-container {
+    max-width: 1100px;
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+}
+
+/* Headings */
+h1, h2, h3 {
+    color: #29382E !important;
+    letter-spacing: -0.5px;
+}
+
+/* Paragraphs and labels */
+p, label, .stMarkdown {
+    color: #465448;
+}
+
+/* Text input areas */
+.stTextArea textarea {
+    background: #FFFDF8;
+    border: 1px solid #DCE3D7;
+    border-radius: 14px;
+    color: #29382E;
+}
+
+/* Buttons */
+.stButton > button,
+.stFormSubmitButton > button {
+    background: #71866B;
+    color: white;
+    border: none;
+    border-radius: 12px;
+    padding: 0.65rem 1.2rem;
+    font-weight: 600;
+    transition: 0.2s ease;
+}
+
+/* Button hover */
+.stButton > button:hover,
+.stFormSubmitButton > button:hover {
+    background: #586F53;
+    color: white;
+    border: none;
+}
+
+/* Sidebar */
+section[data-testid="stSidebar"] {
+    background: #EDEFE6;
+    border-right: 1px solid #DFE4D9;
+}
+
+/* Form container */
+div[data-testid="stForm"] {
+    background: #FFFDF8;
+    border: 1px solid #E5E6DC;
+    border-radius: 18px;
+    padding: 1.4rem;
+}
+
+/* Alerts and result containers */
+div[data-testid="stAlert"] {
+    border-radius: 12px;
+}
+
+/* Divider */
+hr {
+    border-color: #E1E4D9;
+}
+</style>
+""", unsafe_allow_html=True)
+import streamlit as st
+from google import genai
+
 st.set_page_config(
     page_title="Kairo AI — Find Your Way Forward",
     page_icon="🌿",
@@ -149,37 +238,111 @@ footer {visibility: hidden;}
 </style>
 """, unsafe_allow_html=True)
 
+
 with st.sidebar:
-    st.markdown('<div class="brand">🌿 Kairo</div>', unsafe_allow_html=True)
-    st.caption("FIND YOUR WAY FORWARD")
+    st.markdown("""
+    <div style="padding: 12px 0 20px 0;">
+        <div style="
+            font-size: 28px;
+            font-weight: 750;
+            letter-spacing: -1px;
+            color: #29382E;
+        ">🌿 Kairo</div>
+        <div style="
+            font-size: 10px;
+            letter-spacing: 2px;
+            color: #71866B;
+            margin-top: 5px;
+        ">FIND YOUR WAY FORWARD</div>
+    </div>
+    """, unsafe_allow_html=True)
+
     st.divider()
 
+    st.caption("YOUR WORKSPACE")
+
     page = st.radio(
-        "YOUR SPACE",
+        "Navigate",
         ["⌂  Home", "✳  My Roadmap", "◷  Progress"],
-        label_visibility="visible",
+        label_visibility="collapsed",
     )
 
     st.divider()
-    st.caption("SMALL STEPS. REAL GROWTH.")
-    st.write("Your journey starts with one clear goal.")
+
+    st.markdown("""
+    <div style="
+        background: #E2E8DA;
+        border-radius: 14px;
+        padding: 16px;
+        margin-top: 12px;
+    ">
+        <div style="font-size: 20px;">🌱</div>
+        <div style="
+            font-size: 14px;
+            font-weight: 650;
+            color: #354735;
+            margin: 8px 0 5px 0;
+        ">One step at a time</div>
+        <div style="
+            font-size: 12px;
+            line-height: 1.6;
+            color: #62705E;
+        ">Small steps today can lead to meaningful progress tomorrow.</div>
+    </div>
+    """, unsafe_allow_html=True)
+
+    st.markdown("""
+    <div style="
+        padding-top: 24px;
+        font-size: 10px;
+        letter-spacing: 1.5px;
+        color: #84907F;
+    ">KAIRO AI · MADE WITH INTENTION</div>
+    """, unsafe_allow_html=True)
+
 
 st.markdown('<div class="eyebrow">YOUR PERSONAL GROWTH SPACE</div>',
             unsafe_allow_html=True)
 
-st.markdown("""
-<div class="hero">
-    <div class="eyebrow">A LITTLE CLARITY GOES A LONG WAY</div>
-    <h1>Every goal has<br>a path.</h1>
-    <p>Big dreams feel simpler when you know what to do next.<br>
-    Tell us where you want to go. We'll help you plan the journey.</p>
-</div>
-""", unsafe_allow_html=True)
 
 if page == "⌂  Home":
-    st.markdown("<div class='section-title'>Let's find your direction.</div>",
-                unsafe_allow_html=True)
-    st.write("Start with a goal. Kairo will help you turn it into manageable steps.")
+    st.markdown("""
+<div style="
+    padding: 12px 0 28px 0;
+">
+    <div style="
+        color: #71866B;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 3px;
+        margin-bottom: 14px;
+    ">
+        YOUR NEXT CHAPTER STARTS HERE
+    </div>
+
+    <h1 style="
+        font-size: clamp(36px, 5vw, 56px);
+        line-height: 1.12;
+        letter-spacing: -2px;
+        color: #29382E;
+        margin-bottom: 16px;
+    ">
+        Small steps.<br>
+        Big possibilities.
+    </h1>
+
+    <p style="
+        font-size: 17px;
+        line-height: 1.8;
+        color: #697568;
+        max-width: 620px;
+    ">
+        Tell Kairo what you want to achieve.
+        We'll turn your goal into a clear,
+        personalized roadmap.
+    </p>
+</div>
+""", unsafe_allow_html=True)
 
     with st.form("goal_form"):
         goal = st.text_area(
