@@ -112,6 +112,40 @@ div[data-testid="stForm"] {
     line-height: 1.5;
 }
 footer {visibility: hidden;}
+.footer {
+    text-align: center;
+    padding: 28px 10px 12px;
+    margin-top: 30px;
+}
+.footer-line {
+    height: 1px;
+    background: #E4E2D8;
+    margin-bottom: 25px;
+}
+.footer-small {
+    color: #92978B;
+    font-size: 10px;
+    letter-spacing: 3px;
+}
+.footer-name {
+    color: #344B37;
+    font-family: 'Playfair Display', serif;
+    font-size: 23px;
+    font-style: italic;
+    margin: 12px 0 2px;
+}
+.footer-signature {
+    color: #788B70;
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    font-style: italic;
+}
+.footer-tagline {
+    color: #92978B;
+    font-size: 10px;
+    letter-spacing: 1.5px;
+    margin-top: 18px;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -204,7 +238,7 @@ Use clear headings and bullet points.
                     )
 
                     response = client.models.generate_content(
-                        model="gemini-2.5-flash",
+                        model="gemini-3.8-flash",
                         contents=prompt,
                     )
 
@@ -270,5 +304,12 @@ elif page == "◷  Progress":
     st.write("Every small step counts.")
     st.info("Progress tracking will be available when we build the roadmap feature.")
 
-st.divider()
-st.caption("Kairo AI  ·  Find Your Way Forward.")
+st.markdown("""
+<div class="footer">
+    <div class="footer-line"></div>
+    <p class="footer-small">A LITTLE PROGRESS, EVERY DAY</p>
+    <p class="footer-name">Made with intention</p>
+    <p class="footer-signature">— Vikash ✳</p>
+    <p class="footer-tagline">KAIRO AI · FIND YOUR WAY FORWARD</p>
+</div>
+""", unsafe_allow_html=True)
