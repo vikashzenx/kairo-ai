@@ -1,6 +1,6 @@
 
 import streamlit as st
-import ollama
+from google import genai
 st.set_page_config(
     page_title="Kairo AI — Find Your Way Forward",
     page_icon="🌿",
@@ -199,17 +199,16 @@ Use clear headings and bullet points.
 
             try:
                 with st.spinner("Kairo is creating your roadmap..."):
-                    response = ollama.chat(
-                        model="llama3.2:3b",
-                        messages=[
-                            {
-                                "role": "user",
-                                "content": prompt,
-                            }
-                        ],
+                    client = genai.Client(
+                        api_key=st.secrets["GEMINI_API_KEY"]
                     )
 
-                st.session_state["roadmap"] = response.message.content
+                    response = client.models.generate_content(
+                        model="gemini-2.5-flash",
+                        contents=prompt,
+                    )
+
+                st.session_state["roadmap"] = response.text
                 st.success("Your personalized roadmap is ready!")
 
                 st.markdown("### your personalized roadmap")
@@ -217,9 +216,9 @@ Use clear headings and bullet points.
 
             except Exception as e:
                 st.error(
-                    "AI se connection nahi ho paya. "
-                    "Check karo ki Ollama chal raha hai."
-                )
+    "AI se connection nahi ho paya. "
+    "Gemini API connection check karo."
+)
                 st.caption(str(e))
         else:
             st.warning("Write your goal first, then let's get started.")
