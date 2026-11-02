@@ -1,5 +1,7 @@
-import streamlit as st  # type: ignore
-from datetime import date, timedelta
+import streamlit as st
+import pandas as pd
+from datetime import date, datetime, timedelta
+from zoneinfo import ZoneInfo
 from google import genai
 
 st.set_page_config(
@@ -225,6 +227,39 @@ def create_initial_tasks(goal: str) -> list[dict]:
         {"title": "Practise what I learned", "done": False},
         {"title": "Review my progress this week", "done": False},
     ]
+def today_ist() -> date:
+    return datetime.now(ZoneInfo("Asia/Kolkata")).date()
+
+
+def fmt_time(minutes: int) -> str:
+    return f"{minutes // 60}h {minutes % 60}m"
+
+
+def metric_card(label: str, value: str) -> str:
+    return (
+        f'<div class="metric-card"><div class="metric-label">{label}</div>'
+        f'<div class="metric-value">{value}</div></div>'
+    )
+
+
+def calc_streak(active_days: set, today: date) -> tuple:
+    d = today if today.isoformat() in active_days else today - timedelta(days=1)
+    current = 0
+
+    while d.isoformat() in active_days:
+        current += 1
+        d -= timedelta(days=1)
+
+    best = run = 0
+    prev = None
+
+    for s in sorted(active_days):
+        day = date.fromisoformat(s)
+        run = run + 1 if prev and (day - prev).days == 1 else 1
+        best = max(best, run)
+        prev = day
+
+    return current, best
 
 
 def show_roadmap() -> None:
@@ -519,7 +554,7 @@ elif page == "Program Tracker":
         unsafe_allow_html=True,
     )
 
-    today = date.today()
+    today = today_ist()
     today_key = today.isoformat()
 
     # Initialise tracker data
@@ -737,100 +772,237 @@ elif page == "Program Tracker":
 # -------------------- PROGRESS --------------------
 
 elif page == "Progress":
-    st.markdown('<div class="eyebrow">EVERY STEP COUNTS</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-title">Your Progress</div>', unsafe_allow_html=True)
+    today = today_ist()
+    today_key = today.isoformat()
+
+    tracker_tasks = st.session_state.get("tracker_tasks", [])
+    study_logs = st.session_state.get("study_logs", [])
+
     st.markdown(
-        '<div class="subtext">Progress is not about being perfect. '
-        'It is about continuing, one step at a time.</div>',
+        '<div class="eyebrow">EVERY STEP COUNTS</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="section-title">Your Progress</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="subtext">A clear picture of your consistency, '
+        'study time, and daily momentum.</div>',
         unsafe_allow_html=True,
     )
 
-    if st.session_state["goal"] and st.session_state["roadmap"]:
-        if st.session_state["task_goal"] != st.session_state["goal"]:
-            st.session_state["tasks"] = create_initial_tasks(st.session_state["goal"])
-            st.session_state["task_goal"] = st.session_state["goal"]
+    # Collect activity dates from study logs and completed tracker tasks.
+    active_days = {
+        log["date"] for log in study_logs
+        if int(log.get("minutes", 0)) > 0
+    }
+    active_days.update(
+        task["date"] for task in tracker_tasks
+        if task.get("done", False)
+    )
 
-        if not st.session_state["tasks"]:
-            st.session_state["tasks"] = create_initial_tasks(st.session_state["goal"])
+    current_streak, best_streak = calc_streak(active_days, today)
 
-        tasks = st.session_state["tasks"]
-        completed = sum(1 for task in tasks if task["done"])
-        total = len(tasks)
-        percentage = int((completed / total) * 100) if total else 0
+    # Today's and all-time totals.
+    today_minutes = sum(
+        int(log.get("minutes", 0))
+        for log in study_logs
+        if log["date"] == today_key
+    )
+    today_tasks = [
+        task for task in tracker_tasks
+        if task["date"] == today_key
+    ]
+    today_done = sum(1 for task in today_tasks if task.get("done", False))
+    all_minutes = sum(int(log.get("minutes", 0)) for log in study_logs)
+    all_done = sum(1 for task in tracker_tasks if task.get("done", False))
+    all_tasks = len(tracker_tasks)
+    overall_completion = int(all_done / all_tasks * 100) if all_tasks else 0
 
-        c1, c2, c3 = st.columns(3)
-        with c1:
-            st.markdown(
-                f'<div class="metric-card"><div class="metric-label">Completed</div>'
-                f'<div class="metric-value">{completed}</div></div>',
-                unsafe_allow_html=True,
+    # Main metrics.
+    m1, m2, m3, m4 = st.columns(4)
+    with m1:
+        st.markdown(metric_card("Current streak", f"{current_streak} days"),
+                    unsafe_allow_html=True)
+    with m2:
+        st.markdown(metric_card("Best streak", f"{best_streak} days"),
+                    unsafe_allow_html=True)
+    with m3:
+        st.markdown(metric_card("Total study time", fmt_time(all_minutes)),
+                    unsafe_allow_html=True)
+    with m4:
+        st.markdown(metric_card("Tasks completed", f"{all_done}/{all_tasks}"),
+                    unsafe_allow_html=True)
+
+    st.markdown("")
+    st.markdown('<div class="section-title">Today at a glance</div>',
+                unsafe_allow_html=True)
+    t1, t2, t3 = st.columns(3)
+    with t1:
+        st.metric("Study time today", fmt_time(today_minutes))
+    with t2:
+        st.metric("Tasks completed today", f"{today_done}/{len(today_tasks)}")
+    with t3:
+        st.metric("Overall task completion", f"{overall_completion}%")
+
+    st.progress(overall_completion,
+                text=f"{overall_completion}% of your tracked tasks completed")
+
+    # Compare the latest 7 days with the previous 7 days.
+    this_week_start = today - timedelta(days=6)
+    previous_week_start = today - timedelta(days=13)
+    previous_week_end = today - timedelta(days=7)
+
+    this_week_logs = [
+        log for log in study_logs
+        if this_week_start.isoformat() <= log["date"] <= today_key
+    ]
+    previous_week_logs = [
+        log for log in study_logs
+        if previous_week_start.isoformat() <= log["date"] <= previous_week_end.isoformat()
+    ]
+    this_week_minutes = sum(int(log.get("minutes", 0)) for log in this_week_logs)
+    previous_week_minutes = sum(int(log.get("minutes", 0)) for log in previous_week_logs)
+
+    this_week_tasks = [
+        task for task in tracker_tasks
+        if this_week_start.isoformat() <= task["date"] <= today_key
+    ]
+    previous_week_tasks = [
+        task for task in tracker_tasks
+        if previous_week_start.isoformat() <= task["date"] <= previous_week_end.isoformat()
+    ]
+    this_week_done = sum(1 for task in this_week_tasks if task.get("done", False))
+    previous_week_done = sum(1 for task in previous_week_tasks if task.get("done", False))
+
+    st.markdown("---")
+    st.markdown('<div class="section-title">Last 7 days</div>',
+                unsafe_allow_html=True)
+    w1, w2, w3 = st.columns(3)
+    with w1:
+        st.metric("Study time", fmt_time(this_week_minutes))
+    with w2:
+        st.metric("Tasks completed", f"{this_week_done}/{len(this_week_tasks)}")
+    with w3:
+        st.metric("Active days", len({
+            log["date"] for log in this_week_logs
+            if int(log.get("minutes", 0)) > 0
+        } | {
+            task["date"] for task in this_week_tasks
+            if task.get("done", False)
+        }))
+
+    if previous_week_minutes or previous_week_tasks:
+        if this_week_minutes > previous_week_minutes:
+            st.success(
+                f"Study time is up by {fmt_time(this_week_minutes - previous_week_minutes)} "
+                "compared with the previous 7 days."
             )
-        with c2:
-            st.markdown(
-                f'<div class="metric-card"><div class="metric-label">Total tasks</div>'
-                f'<div class="metric-value">{total}</div></div>',
-                unsafe_allow_html=True,
+        elif this_week_minutes < previous_week_minutes:
+            st.info(
+                f"Study time is down by {fmt_time(previous_week_minutes - this_week_minutes)} "
+                "compared with the previous 7 days. You can build momentum again."
             )
-        with c3:
-            st.markdown(
-                f'<div class="metric-card"><div class="metric-label">Progress</div>'
-                f'<div class="metric-value">{percentage}%</div></div>',
-                unsafe_allow_html=True,
-            )
+        else:
+            st.info("Your study time is the same as the previous 7 days.")
 
-        st.markdown("")
-        st.progress(percentage, text=f"{percentage}% of your checklist completed")
+    # Last 30 days chart.
+    st.markdown("---")
+    st.markdown('<div class="section-title">Your 30-day activity</div>',
+                unsafe_allow_html=True)
 
-        st.markdown('<div class="section-title">Your action checklist</div>', unsafe_allow_html=True)
-        st.caption("Ye starter tasks hain. Tum inhe edit karke apne actual tasks bana sakte ho.")
+    chart_rows = []
+    for offset in range(29, -1, -1):
+        day = today - timedelta(days=offset)
+        minutes = sum(
+            int(log.get("minutes", 0))
+            for log in study_logs
+            if log["date"] == day.isoformat()
+        )
+        chart_rows.append({"Date": day, "Study minutes": minutes})
 
-        # Each task has a stable key; checkbox state survives normal Streamlit reruns.
-        for index, task in enumerate(tasks):
-            col_check, col_edit = st.columns([0.08, 0.92])
-            with col_check:
-                checked = st.checkbox(
-                    "Done",
-                    value=task["done"],
-                    key=f"task_done_{st.session_state['task_goal']}_{index}",
-                    label_visibility="collapsed",
+    chart_df = pd.DataFrame(chart_rows).set_index("Date")
+    st.bar_chart(chart_df, y="Study minutes", use_container_width=True)
+
+    # Weekly goal based on the daily hours selected while creating the roadmap.
+    daily_target = int(st.session_state.get("hours", 2)) * 60
+    target_days = sum(
+        1 for offset in range(6, -1, -1)
+        if sum(
+            int(log.get("minutes", 0))
+            for log in study_logs
+            if log["date"] == (today - timedelta(days=offset)).isoformat()
+        ) >= daily_target
+    )
+    st.caption(
+        f"Daily study target: {fmt_time(daily_target)} · "
+        f"You reached it on {target_days} of the last 7 days."
+    )
+
+    # AI-generated weekly reflection, only when the user asks for it.
+    st.markdown("---")
+    st.markdown('<div class="section-title">Your AI weekly review</div>',
+                unsafe_allow_html=True)
+    st.caption("Kairo will review your recent activity and suggest practical next steps.")
+
+    if st.button("Generate my weekly review", key="generate_weekly_review"):
+        review_data = {
+            "goal": st.session_state.get("goal", "Not set"),
+            "study_minutes_last_7_days": this_week_minutes,
+            "study_minutes_previous_7_days": previous_week_minutes,
+            "tasks_completed_last_7_days": this_week_done,
+            "tasks_created_last_7_days": len(this_week_tasks),
+            "current_streak_days": current_streak,
+            "daily_target_minutes": daily_target,
+            "target_reached_days": target_days,
+        }
+        review_prompt = f"""
+You are Kairo AI, a supportive and practical study coach.
+Review this user's activity data:
+{review_data}
+
+Write in natural Hinglish using Roman letters only. Do not use Devanagari.
+Give an honest, encouraging review in this structure:
+1. What went well
+2. What needs attention
+3. One realistic focus for the next 7 days
+4. Three small actionable steps
+
+Do not invent activity or claim progress that is not present in the data.
+Keep it concise and specific.
+"""
+        try:
+            with st.spinner("Kairo is reviewing your progress..."):
+                client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+                response = client.models.generate_content(
+                    model="gemini-3.6-flash",
+                    contents=review_prompt,
                 )
-            with col_edit:
-                edited_title = st.text_input(
-                    f"Task {index + 1}",
-                    value=task["title"],
-                    key=f"task_title_{st.session_state['task_goal']}_{index}",
-                    label_visibility="collapsed",
+            if response.text:
+                st.session_state["weekly_review"] = response.text
+            else:
+                st.warning("Kairo could not create a review just now. Try again.")
+        except Exception as e:
+            error_text = str(e)
+            if "GEMINI_API_KEY" in error_text or "secrets" in error_text.lower():
+                st.error(
+                    "Gemini API key nahi mili. .streamlit/secrets.toml "
+                    "ya Streamlit Cloud secrets check karo."
                 )
+            else:
+                st.error(f"Weekly review generate nahi ho paya: {error_text}")
 
-            task["done"] = checked
-            task["title"] = edited_title.strip() or task["title"]
+    if st.session_state.get("weekly_review"):
+        st.markdown('<div class="roadmap-content">', unsafe_allow_html=True)
+        st.markdown(st.session_state["weekly_review"])
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        st.session_state["tasks"] = tasks
-
-        completed = sum(1 for task in tasks if task["done"])
-        percentage = int((completed / len(tasks)) * 100) if tasks else 0
-        st.progress(percentage, text=f"Updated progress: {percentage}%")
-
-        if st.button("Reset checklist"):
-            # Reset task data and checkbox widget values before the next render.
-            for index, task in enumerate(tasks):
-                done_key = f"task_done_{st.session_state['task_goal']}_{index}"
-                st.session_state[done_key] = False
-                task["done"] = False
-            st.session_state["tasks"] = tasks
-            st.rerun()
-
-    else:
-        st.markdown("""
-        <div class="panel">
-            <div class="section-title">Your progress starts with a goal.</div>
-            <p class="subtext">
-                Pehle Home par roadmap generate karo. Uske baad yahan
-                apni checklist update kar sakte ho.
-            </p>
-        </div>
-        """, unsafe_allow_html=True)
-        
+    if not tracker_tasks and not study_logs:
+        st.info(
+            "Abhi tracker data nahi hai. Program Tracker mein tasks add karo "
+            "aur study time log karo. Tumhara Progress dashboard yahan update hoga."
+        )
 
 
 
